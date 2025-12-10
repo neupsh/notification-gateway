@@ -36,7 +36,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: 'notification-gateway'
-          command: deploy --env production
+          command: deploy
 
       - name: Deploy to Cloudflare Workers (Dev)
         if: github.event_name == 'pull_request'
