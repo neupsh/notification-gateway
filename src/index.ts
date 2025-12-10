@@ -1,7 +1,10 @@
 import { Env, NotificationPayload } from './types';
+import { ActionState } from './types';
 import { sendTelegramNotification } from './handlers/telegram';
 import { sendPushoverNotification } from './handlers/pushover';
+import { handleTelegramWebhook } from './handlers/webhook';
 import { KeyStore } from './services/key-store';
+import { StateManager } from './services/state-manager';
 // Simple inline HTML for the dashboard to avoid complex bundler configuration
 const dashboardHtml = `<!DOCTYPE html>
 <html lang="en">
@@ -172,6 +175,7 @@ export default {
     const requestId = request.headers.get('X-Request-ID') || crypto.randomUUID();
     const timestamp = new Date().toISOString();
     const keyStore = new KeyStore(env.NOTIFICATION_GATEWAY_KEYS);
+    const stateManager = new StateManager(env.NOTIFICATION_GATEWAY_KEYS);
 
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
@@ -188,6 +192,12 @@ export default {
       return new Response(dashboardHtml, {
         headers: { 'Content-Type': 'text/html' }
       });
+    }
+
+    // --- Webhook Route (Telegram) ---
+    // Note: Publicly accessible, but validated by Telegram Secret (TODO: Add secret check)
+    if (url.pathname === '/webhooks/telegram' && request.method === 'POST') {
+      return handleTelegramWebhook(request, env, stateManager);
     }
 
     // --- Authentication Middleware ---
@@ -210,6 +220,8 @@ export default {
         headers: { 'Content-Type': 'application/json', 'X-Request-ID': requestId, ...corsHeaders }
       });
     }
+
+
 
     // --- Admin API Routes ---
     if (url.pathname.startsWith('/api/admin')) {
@@ -250,18 +262,41 @@ export default {
         let resultId = '';
 
         if (payload.channel === 'telegram') {
-          resultId = await sendTelegramNotification(payload, env);
+          const res = await sendTelegramNotification(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, payload);
+          resultId = res.messageId.toString();
           provider = 'telegram';
+
+          // --- State Tracking for Callbacks ---
+          if (payload.callbackUrl && resultId) {
+            const state: ActionState = {
+              callbackUrl: payload.callbackUrl,
+              context: payload.context,
+              createdAt: Date.now()
+            };
+            await stateManager.saveState('telegram', env.TELEGRAM_CHAT_ID, resultId, state);
+          }
         } else if (payload.channel === 'pushover') {
           resultId = await sendPushoverNotification(payload, env);
           provider = 'pushover';
         } else {
           if (payload.priority === 'high') {
-            resultId = await sendPushoverNotification(payload, env);
+            const res = await sendPushoverNotification(payload, env);
+            resultId = res;
             provider = 'pushover';
           } else {
-            resultId = await sendTelegramNotification(payload, env);
+            const res = await sendTelegramNotification(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, payload);
+            resultId = res.messageId.toString();
             provider = 'telegram';
+
+            // --- State Tracking for Callbacks ---
+            if (payload.callbackUrl && resultId) {
+              const state: ActionState = {
+                callbackUrl: payload.callbackUrl,
+                context: payload.context,
+                createdAt: Date.now()
+              };
+              await stateManager.saveState('telegram', env.TELEGRAM_CHAT_ID, resultId, state);
+            }
           }
         }
 

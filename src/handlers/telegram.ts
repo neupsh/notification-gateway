@@ -1,10 +1,21 @@
-import { Env, NotificationPayload } from '../types';
+import { NotificationPayload } from '../types';
 
-export async function sendTelegramNotification(payload: NotificationPayload, env: Env): Promise<string> {
-  const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`;
+interface TelegramResponse {
+  ok: boolean;
+  result: {
+    message_id: number;
+  };
+}
+
+export async function sendTelegramNotification(
+  token: string,
+  chatId: string,
+  payload: NotificationPayload
+): Promise<{ messageId: number }> {
+  const url = `https://api.telegram.org/bot${token}/sendMessage`;
 
   const body: any = {
-    chat_id: env.TELEGRAM_CHAT_ID,
+    chat_id: chatId,
     text: payload.title ? `*${payload.title}*\n${payload.message}` : payload.message,
     parse_mode: 'Markdown',
   };
@@ -33,11 +44,11 @@ export async function sendTelegramNotification(payload: NotificationPayload, env
     body: JSON.stringify(body),
   });
 
-  const data: any = await response.json();
+  const data = await response.json() as TelegramResponse;
 
-  if (!data.ok) {
-    throw new Error(`Telegram API Error: ${data.description}`);
+  if (!response.ok || !data.ok) {
+    throw new Error(`Telegram API Error: ${response.statusText}`);
   }
 
-  return data.result.message_id.toString();
+  return { messageId: data.result.message_id };
 }

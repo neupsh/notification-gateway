@@ -6,6 +6,7 @@ export interface Env {
   TELEGRAM_CHAT_ID: string;
   PUSHOVER_USER_KEY: string;
   PUSHOVER_API_TOKEN: string;
+  TELEGRAM_WEBHOOK_SECRET?: string;
 
   // Bindings
   NOTIFICATION_GATEWAY_KEYS: KVNamespace; // [NEW]
@@ -29,11 +30,13 @@ export interface Action {
 }
 
 export interface NotificationPayload {
-  channel: 'auto' | 'telegram' | 'pushover';
+  channel?: 'auto' | 'telegram' | 'pushover';
   priority?: 'high' | 'normal' | 'low';
   title?: string;
   message: string;
   actions?: Action[];
+  callbackUrl?: string;
+  context?: Record<string, unknown>; // Data to be echoed back
 }
 
 export interface ApiResponse {
@@ -42,4 +45,11 @@ export interface ApiResponse {
   id?: string;
   error?: string;
   timestamp: string;
+  data?: any;
+}
+
+export interface ActionState {
+  callbackUrl: string;
+  context?: Record<string, unknown>;
+  createdAt: number;
 }

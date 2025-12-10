@@ -148,5 +148,33 @@ pnpm test
 pnpm lint
 ```
 
-## 7. Troubleshooting
+
+## 🚀 Interactive Notifications (v3)
+
+You can now add buttons to your Telegram notifications and receive callbacks when users click them.
+
+**Example Request:**
+```json
+{
+  "channel": "telegram",
+  "message": "Deploy Production?",
+  "callbackUrl": "https://my-app.com/deploy-webhook",
+  "context": { "deployId": 123 },
+  "actions": [
+    { "label": "✅ Yes", "command": "approve" },
+    { "label": "❌ No", "command": "reject" }
+  ]
+}
+```
+
+See [Interactive Guide](interactive-guide.md) for full details.
+
+## 🔐 Security
+To secure the Webhook Listener:
+1.  Set `TELEGRAM_WEBHOOK_SECRET` via `npx wrangler secret put`.
+2.  Register your bot webhook with the `secret_token` parameter.
+
+See [Interactive Guide](interactive-guide.md#4-security-recommended).
+
+## 🛠️ Troubleshooting
 If you get `500 Internal Server Error`, check the Cloudflare Worker Logs (Real-time logs) in the dashboard to see if a specific API key is failing.

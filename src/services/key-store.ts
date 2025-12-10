@@ -14,8 +14,6 @@ export class KeyStore {
     const array = new Uint8Array(24);
     crypto.getRandomValues(array);
     // Manual Base64URL encoding to avoid dependency issues in Workers
-    let str = '';
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
     // We treat the byte array as a stream of bits and map them to our chars
     // But for simplicity and speed in this scope, we can map bytes directly or use a simpler algo.
     // Let's use a simple mapping for "randomness" without strict bit-packing if we don't care about exact density,
