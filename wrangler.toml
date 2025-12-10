@@ -1,0 +1,22 @@
+name = "notification-gateway"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+workers_dev = true
+
+# Global Settings (Default = Production)
+[vars]
+
+# KV Namespace Binding (Default = Production)
+[[kv_namespaces]]
+binding = "NOTIFICATION_GATEWAY_KEYS"
+id = "3728efb2f1344e0494ecdb8f2688f9f5"
+preview_id = "882a89f0429641659829ad6bebf48524"
+
+# Dev Environment
+[env.dev]
+name = "notification-gateway-dev"
+workers_dev = true
+[[env.dev.kv_namespaces]]
+binding = "NOTIFICATION_GATEWAY_KEYS"
+id = "b71b7c4ed2c040579657183218c2f94d"
+preview_id = "882a89f0429641659829ad6bebf48524"

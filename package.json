@@ -1,0 +1,33 @@
+{
+  "name": "notification-gateway",
+  "version": "1.0.0",
+  "description": "Unified notification gateway for Telegram and Pushover",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint 'src/**/*.{ts,js}'",
+    "format": "prettier --write 'src/**/*.{ts,js,json,md}'",
+    "audit": "pnpm audit",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "start": "wrangler dev",
+    "check-all": "pnpm lint && pnpm audit && pnpm test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250109.0",
+    "@eslint/js": "^9.39.1",
+    "@vitest/coverage-v8": "^4.0.15",
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
+    "prettier": "^3.7.4",
+    "typescript": "^5.3.3",
+    "typescript-eslint": "^8.49.0",
+    "vitest": "^4.0.15",
+    "wrangler": "^4.53.0"
+  }
+}
