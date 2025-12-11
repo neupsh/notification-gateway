@@ -20,7 +20,7 @@ curl -X POST https://notification-gateway.<your-domain>.workers.dev/notify \
     "callbackUrl": "https://my-app.com/api/deploy-approval",
     "context": {
       "deploymentId": "dep_998877",
-      "initiatedBy": "shekhar"
+      "initiatedBy": "system_user"
     },
     "actions": [
       { "label": "✅ Approve", "command": "approve", "type": "button" },
@@ -39,12 +39,12 @@ Your server (`https://my-app.com/api/deploy-approval`) will receive a `POST` req
   "action": "approve",      // The command from the button
   "user": {                 // Telegram User info
     "id": 12345678,
-    "first_name": "Shekhar",
-    "username": "shekhar_user"
+    "first_name": "John",
+    "username": "john_doe"
   },
   "context": {              // YOUR original context echoed back
     "deploymentId": "dep_998877",
-    "initiatedBy": "shekhar"
+    "initiatedBy": "system_user"
   }
 }
 ```
@@ -64,7 +64,7 @@ To prevent unauthorized users from hitting your `/webhooks/telegram` endpoint, y
     ```
 3.  **Register with Telegram**:
     ```bash
-    curl -F "url=https://notification-gateway.neupsh.workers.dev/webhooks/telegram" \
+    curl -F "url=https://notification-gateway.<your-subdomain>.workers.dev/webhooks/telegram" \
          -F "secret_token=<YOUR_SECRET>" \
          https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook
     ```
