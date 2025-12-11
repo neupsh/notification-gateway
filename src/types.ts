@@ -20,6 +20,7 @@ export interface ApiKeyData {
   isActive: boolean;
   usage: number;
   lastUsedAt: string | null;
+  defaultChatId?: string; // [NEW] Default Telegram Chat ID for this key
 }
 
 export interface Action {
@@ -34,6 +35,7 @@ export interface NotificationPayload {
   priority?: 'high' | 'normal' | 'low';
   title?: string;
   message: string;
+  recipient?: string | string[]; // [NEW] Specific recipient(s) overriding defaults
   actions?: Action[];
   callbackUrl?: string;
   context?: Record<string, unknown>; // Data to be echoed back

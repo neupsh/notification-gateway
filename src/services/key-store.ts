@@ -46,7 +46,7 @@ export class KeyStore {
     return keys;
   }
 
-  async createKey(appId: string, description: string): Promise<string> {
+  async createKey(appId: string, description: string, options?: { defaultChatId?: string }): Promise<string> {
     const rawKey = this.generateKey();
     const storageKey = `key:${rawKey}`;
 
@@ -56,23 +56,41 @@ export class KeyStore {
       createdAt: new Date().toISOString(),
       usage: 0,
       lastUsedAt: null,
-      isActive: true
+      isActive: true,
+      defaultChatId: options?.defaultChatId
     };
 
     await this.kv.put(storageKey, JSON.stringify(data));
     return rawKey;
   }
 
+  async updateKey(rawKey: string, updates: { description?: string; defaultChatId?: string; isActive?: boolean }): Promise<ApiKeyData | null> {
+    const storageKey = `key:${rawKey}`;
+    const data = await this.kv.get<ApiKeyData>(storageKey, 'json');
+
+    if (!data) {
+      return null;
+    }
+
+    // Apply updates
+    if (updates.description !== undefined) data.description = updates.description;
+    if (updates.defaultChatId !== undefined) data.defaultChatId = updates.defaultChatId;
+    if (updates.isActive !== undefined) data.isActive = updates.isActive;
+
+    await this.kv.put(storageKey, JSON.stringify(data));
+    return data;
+  }
+
   async revokeKey(rawKey: string): Promise<void> {
     await this.kv.delete(`key:${rawKey}`);
   }
 
-  async verifyAndTrack(rawKey: string): Promise<boolean> {
+  async verifyAndTrack(rawKey: string): Promise<ApiKeyData | null> {
     const storageKey = `key:${rawKey}`;
     const data = await this.kv.get<ApiKeyData>(storageKey, 'json');
 
     if (!data || !data.isActive) {
-      return false;
+      return null;
     }
 
     // Background update usage stats (approximate, fire-and-forget logic)
@@ -86,6 +104,6 @@ export class KeyStore {
     // or just await it here for simplicity as KV writes are fast.
     await this.kv.put(storageKey, JSON.stringify(data));
 
-    return true;
+    return data;
   }
 }

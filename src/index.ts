@@ -34,10 +34,20 @@ const dashboardHtml = `<!DOCTYPE html>
             <!-- Create Form -->
             <div class="bg-white p-6 rounded shadow mb-8">
                 <h2 class="text-xl font-bold mb-4">Create New API Key</h2>
-                <div class="flex gap-4">
-                    <input v-model="newKey.appId" placeholder="App Name (e.g. Backup Script)" class="border p-2 rounded flex-1">
-                    <input v-model="newKey.description" placeholder="Description/Note" class="border p-2 rounded flex-1">
-                    <button @click="createKey" :disabled="loading" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+                <div class="flex gap-4 items-end">
+                    <div class="flex-1">
+                        <label class="block text-sm font-bold mb-1">App Name</label>
+                        <input v-model="newKey.appId" placeholder="e.g. Backup Script" class="w-full border p-2 rounded">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-bold mb-1">Description</label>
+                        <input v-model="newKey.description" placeholder="Notes" class="w-full border p-2 rounded">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-bold mb-1">Default Chat ID (Optional)</label>
+                        <input v-model="newKey.defaultChatId" placeholder="e.g. 123456789" class="w-full border p-2 rounded">
+                    </div>
+                    <button @click="createKey" :disabled="loading" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 h-10">
                         {{ loading ? '...' : 'Create' }}
                     </button>
                 </div>
@@ -62,6 +72,7 @@ const dashboardHtml = `<!DOCTYPE html>
                         <tr>
                             <th class="p-4 text-left">App ID</th>
                             <th class="p-4 text-left">Description</th>
+                            <th class="p-4 text-left">Default Chat ID</th>
                             <th class="p-4 text-left">Usage</th>
                             <th class="p-4 text-left">Last Used</th>
                             <th class="p-4 text-right">Actions</th>
@@ -71,13 +82,15 @@ const dashboardHtml = `<!DOCTYPE html>
                         <tr v-for="k in keys" :key="k.key" class="border-t hover:bg-gray-50">
                             <td class="p-4 font-medium">{{ k.data.appId }}</td>
                             <td class="p-4 text-gray-600">{{ k.data.description }}</td>
+                            <td class="p-4 text-gray-500 font-mono text-xs">{{ k.data.defaultChatId || '-' }}</td>
                             <td class="p-4">
                                 <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-bold">{{ k.data.usage }}</span>
                             </td>
                             <td class="p-4 text-sm text-gray-500">
                                 {{ k.data.lastUsedAt ? new Date(k.data.lastUsedAt).toLocaleString() : 'Never' }}
                             </td>
-                            <td class="p-4 text-right">
+                            <td class="p-4 text-right space-x-2">
+                                <button @click="editKey(k)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Edit</button>
                                 <button @click="revokeKey(k.key)" class="text-red-600 hover:text-red-800 font-medium text-sm">Revoke</button>
                             </td>
                         </tr>
@@ -100,7 +113,7 @@ const dashboardHtml = `<!DOCTYPE html>
                     inputToken: '',
                     keys: [],
                     loading: false,
-                    newKey: { appId: '', description: '' },
+                    newKey: { appId: '', description: '', defaultChatId: '' },
                     createdKey: '',
                     copyText: 'Copy'
                 }
@@ -143,7 +156,7 @@ const dashboardHtml = `<!DOCTYPE html>
                         const data = await res.json();
                         if(data.key) {
                             this.createdKey = data.key;
-                            this.newKey = { appId: '', description: '' };
+                            this.newKey = { appId: '', description: '', defaultChatId: '' };
                             this.fetchKeys();
                         }
                     } catch (e) { alert('Error creating key'); }
@@ -162,6 +175,23 @@ const dashboardHtml = `<!DOCTYPE html>
                         headers: { 'Authorization': 'Bearer ' + this.token }
                     });
                     this.fetchKeys();
+                },
+                async editKey(k) {
+                    const newChatId = prompt("Update Default Chat ID for " + k.data.appId + ":", k.data.defaultChatId || "");
+                    if (newChatId === null) return; // Cancelled
+
+                    try {
+                        const res = await fetch('/api/admin/keys/' + k.key, {
+                            method: 'PUT',
+                            headers: { 
+                                'Authorization': 'Bearer ' + this.token,
+                                'Content-Type': 'application/json' 
+                            },
+                            body: JSON.stringify({ defaultChatId: newChatId })
+                        });
+                        if (res.ok) this.fetchKeys();
+                        else alert("Failed to update key");
+                    } catch(e) { alert("Error updating key"); }
                 }
             }
         }).mount('#app');
@@ -206,12 +236,18 @@ export default {
     let isAdmin = false;
     let isApp = false;
 
-    // 1. Check Admin Secret (Super User)
+    // 2. Check KV Keys (App User)
+    // We'll store key data for use in endpoints
+    let keyData: any = null;
+
     if (token === env.ADMIN_SECRET) {
       isAdmin = true;
     } else if (token) {
-      // 2. Check KV Keys (App User)
-      isApp = await keyStore.verifyAndTrack(token);
+      const data = await keyStore.verifyAndTrack(token);
+      if (data) {
+        isApp = true;
+        keyData = data;
+      }
     }
 
     if (!isAdmin && !isApp) {
@@ -234,15 +270,25 @@ export default {
         }
         if (request.method === 'POST') {
           const body = await request.json() as any;
-          const key = await keyStore.createKey(body.appId, body.description);
+          const key = await keyStore.createKey(body.appId, body.description, { defaultChatId: body.defaultChatId });
           return new Response(JSON.stringify({ key }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
         }
       }
 
-      if (url.pathname.startsWith('/api/admin/keys/') && request.method === 'DELETE') {
-        const keyToDelete = url.pathname.split('/').pop();
-        if (keyToDelete) await keyStore.revokeKey(keyToDelete);
-        return new Response(JSON.stringify({ status: 'deleted' }), { headers: { ...corsHeaders } });
+      if (url.pathname.startsWith('/api/admin/keys/')) {
+        const keyToEdit = url.pathname.split('/').pop();
+
+        if (request.method === 'PUT' && keyToEdit) {
+          const body = await request.json() as any;
+          const updated = await keyStore.updateKey(keyToEdit, body);
+          if (!updated) return new Response("Key not found", { status: 404 });
+          return new Response(JSON.stringify(updated), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+        }
+
+        if (request.method === 'DELETE' && keyToEdit) {
+          await keyStore.revokeKey(keyToEdit);
+          return new Response(JSON.stringify({ status: 'deleted' }), { headers: { ...corsHeaders } });
+        }
       }
     }
 
@@ -258,52 +304,61 @@ export default {
           });
         }
 
-        let provider = '';
-        let resultId = '';
+        let recipients: string[] = [];
 
-        if (payload.channel === 'telegram') {
-          const res = await sendTelegramNotification(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, payload);
-          resultId = res.messageId.toString();
-          provider = 'telegram';
-
-          // --- State Tracking for Callbacks ---
-          if (payload.callbackUrl && resultId) {
-            const state: ActionState = {
-              callbackUrl: payload.callbackUrl,
-              context: payload.context,
-              createdAt: Date.now()
-            };
-            await stateManager.saveState('telegram', env.TELEGRAM_CHAT_ID, resultId, state);
-          }
-        } else if (payload.channel === 'pushover') {
-          resultId = await sendPushoverNotification(payload, env);
-          provider = 'pushover';
-        } else {
-          if (payload.priority === 'high') {
-            const res = await sendPushoverNotification(payload, env);
-            resultId = res;
-            provider = 'pushover';
+        // 1. Resolve Recipients
+        if (payload.recipient) {
+          if (Array.isArray(payload.recipient)) {
+            recipients = payload.recipient;
           } else {
-            const res = await sendTelegramNotification(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, payload);
-            resultId = res.messageId.toString();
-            provider = 'telegram';
+            recipients = [payload.recipient];
+          }
+        } else if (keyData?.defaultChatId) {
+          recipients = [keyData.defaultChatId];
+        } else {
+          recipients = [env.TELEGRAM_CHAT_ID]; // Fallback to global
+        }
 
-            // --- State Tracking for Callbacks ---
-            if (payload.callbackUrl && resultId) {
-              const state: ActionState = {
-                callbackUrl: payload.callbackUrl,
-                context: payload.context,
-                createdAt: Date.now()
-              };
-              await stateManager.saveState('telegram', env.TELEGRAM_CHAT_ID, resultId, state);
+        const results: any[] = [];
+
+        // 2. Dispatch Loop
+        for (const chatId of recipients) {
+          let provider = '';
+          let resultId = '';
+          try {
+            if (payload.channel === 'telegram' || !payload.channel) { // Default to Telegram
+              const res = await sendTelegramNotification(env.TELEGRAM_BOT_TOKEN, chatId, payload);
+              resultId = res.messageId.toString();
+              provider = 'telegram';
+
+              if (payload.callbackUrl && resultId) {
+                const state: ActionState = {
+                  callbackUrl: payload.callbackUrl,
+                  context: payload.context,
+                  createdAt: Date.now()
+                };
+                await stateManager.saveState('telegram', chatId, resultId, state);
+              }
+            } else if (payload.channel === 'pushover') {
+              // Pushover doesn't support chat ID overrides the same way (User Key is the ID).
+              // We'll assume 'recipient' maps to USER_KEY for Pushover if specified?
+              // For now, keep Pushover as legacy single-user unless explicit request.
+              // Or reuse 'chatId' as 'userKey'.
+              const res = await sendPushoverNotification(payload, env);
+              resultId = res;
+              provider = 'pushover';
             }
+
+            results.push({ recipient: chatId, status: 'sent', id: resultId, provider });
+          } catch (e: any) {
+            console.error(`Failed to send to ${chatId}:`, e);
+            results.push({ recipient: chatId, status: 'error', error: e.message });
           }
         }
 
         return new Response(JSON.stringify({
-          status: 'sent',
-          provider,
-          id: resultId,
+          status: 'processed',
+          results,
           timestamp
         }), {
           status: 200,

@@ -103,6 +103,27 @@ curl -X POST https://.../notify \
     "message": "🚨 Garage Door Left Open!"
   }'
 ```
+```bash
+curl -X POST https://.../notify \
+  -H "Authorization: Bearer my-secret-key" \
+  -d '{
+  "channel": "telegram",
+  "priority": "high",
+  "title": "Alert",
+  "message": "System Down!",
+  "recipient": "123456789", // [Option 1] Single Recipient
+  "recipient": ["123", "456"], // [Option 2] Multiple Recipients
+  "actions": [...]
+}
+```
+
+### 3. API Key Management (v4)
+Keys can now have a **Default Chat ID**. If no `recipient` is specified in the payload, the gateway will use the key's default. If that is also missing, it falls back to the system default.
+
+**Admin API**:
+- `POST /api/admin/keys`: Create key (body: `{ appId, description, defaultChatId }`)
+- `PUT /api/admin/keys/:key`: Update key (body: `{ defaultChatId }`)
+- `DELETE /api/admin/keys/:key`: Revoke key
 
 **Question/Interactive (Telegram)**
 ```bash

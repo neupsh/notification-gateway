@@ -22,23 +22,24 @@ describe('KeyStore', () => {
     expect(kv.put).toHaveBeenCalledWith(expect.stringContaining('key:ng_'), expect.stringContaining('test-app'));
   });
 
-  it('verifyKey should return false for invalid key', async () => {
+  it('verifyKey should return null for invalid key', async () => {
     kv.get.mockResolvedValue(null);
-    const valid = await keyStore.verifyAndTrack('invalid-key');
-    expect(valid).toBe(false);
+    const result = await keyStore.verifyAndTrack('invalid-key');
+    expect(result).toBeNull();
   });
 
-  it('verifyKey should return true and increment usage for valid key', async () => {
+  it('verifyKey should return data and increment usage for valid key', async () => {
     const mockData = { isActive: true, usage: 0 };
     kv.get.mockResolvedValue(mockData);
 
-    const valid = await keyStore.verifyAndTrack('valid-key');
+    const result = await keyStore.verifyAndTrack('valid-key');
 
-    expect(valid).toBe(true);
+    expect(result).toBeTruthy();
+    expect(result?.usage).toBe(1);
     expect(kv.put).toHaveBeenCalled();
     const saveCall = kv.put.mock.calls[0];
-    const savedData = JSON.parse(saveCall[1]);
-    expect(savedData.usage).toBe(1);
-    expect(savedData.lastUsedAt).toBeDefined();
+    expect(saveCall[0]).toBe('key:valid-key');
+    expect(JSON.parse(saveCall[1]).usage).toBe(1);
+    expect(JSON.parse(saveCall[1]).lastUsedAt).toBeDefined();
   });
 });
