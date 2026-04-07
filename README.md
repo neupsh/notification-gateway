@@ -199,3 +199,21 @@ See [Interactive Guide](interactive-guide.md#4-security-recommended).
 
 ## 🛠️ Troubleshooting
 If you get `500 Internal Server Error`, check the Cloudflare Worker Logs (Real-time logs) in the dashboard to see if a specific API key is failing.
+You can tail the logs with:
+
+```
+# Pretty format (default)
+npx wrangler tail notification-gateway
+
+# JSON format
+npx wrangler tail notification-gateway --format json
+
+# Filter by status (ok/error/canceled)
+npx wrangler tail notification-gateway --status error
+
+# Filter by search text in console.log messages
+npx wrangler tail notification-gateway --search "error"
+
+# Filter by HTTP method
+npx wrangler tail notification-gateway --method POST
+```
