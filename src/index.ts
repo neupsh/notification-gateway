@@ -326,7 +326,7 @@ export default {
           let provider = '';
           let resultId = '';
           try {
-            if (payload.channel === 'telegram' || !payload.channel) { // Default to Telegram
+            if (payload.channel === 'telegram' || payload.channel === 'auto' || !payload.channel) { // Default to Telegram
               const res = await sendTelegramNotification(env.TELEGRAM_BOT_TOKEN, chatId, payload);
               resultId = res.messageId.toString();
               provider = 'telegram';
